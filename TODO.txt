@@ -1,0 +1,3 @@
+Complete time to live 
+optimize read and write
+make thread safe
