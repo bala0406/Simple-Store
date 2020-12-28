@@ -26,6 +26,9 @@ class SimpleStore:
     # records the last performed operation
     __lastOperation = LastOperation.NONE
 
+    #flags if a file is created or not
+    __isFileCreated = False
+
     # returns the instance if present or creates a new instance
     @staticmethod
     def getInstance():
@@ -60,6 +63,9 @@ class SimpleStore:
             if(self.__isPath(path)):
                 self.__path = path + "/{0}.json".format(fileName)
                 self.__updateJson()
+                if(self.__isFileCreated == False):
+                    self.__isFileCreated = True
+                    print("File created at:" + self.__path)
             else:
                 print("!!!Invalid path for store!!!")
 
@@ -84,6 +90,10 @@ class SimpleStore:
     # create a new key-value pair and append it to the loaded dictionary
     # it also verifies that the file size of a single store won't exceed 1GB
     def create(self, key: str, value: dict):
+        if(self.__isFileCreated == False and self.__isPath(self.__path) == False):
+            self.__updateJson()
+            print("File created at:" + self.__path)
+            self.__isFileCreated = True
         try:
             size = "{:.2f}".format(
                 float(os.path.getsize(self.__path) / (1024 * 1024)))
