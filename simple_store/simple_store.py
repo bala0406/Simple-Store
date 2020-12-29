@@ -22,15 +22,13 @@ class LastOperation(enum.Enum):
 class SimpleStore:
     # singleton instance
     __simpleStore = None
-
+   
     # default path to the store
     __path = ""
+   
     # default file name of the store if one is not provided using setPath()
-    __fileName = "SimpleStore"
-
-    # loaded data from json file using __loadJson()
-    __loadedData = {}
-
+    __fileName = None
+   
     # records the last performed operation to avoid reloading the entire json
     __lastOperation = LastOperation.NONE
 
@@ -49,7 +47,15 @@ class SimpleStore:
             SimpleStore.__simpleStore = SimpleStore()
         return SimpleStore.__simpleStore
 
+    # !!! prefer using getInstance() if need only one instance and to avoid duplication
+    # constructors are to used to invoke multiple instances
+    # but object state won't be saved across constructors and it becomes a mess with many constructors.
     def __init__(self):
+
+        self.__fileName = "SimpleStore"
+        self.__loadedData = {}
+        self.__lastOperation = LastOperation.NONE
+        self.__isFilePresent = False
         # gets the current platform at runtime
         platform = sys.platform
         # provides path for current directory
@@ -65,7 +71,9 @@ class SimpleStore:
         elif(platform == "darwin"):
             self.__path = basePath + "/{0}.json".format(self.__fileName)
         else:
-            logging.critical(msg="your platform is currently not supported")
+            self.__path = basePath + "/{0}.json".format(self.__fileName)
+            logging.critical(
+                msg="your platform is currently not supported, functions may not perform as intended")
 
     # check if the user provided path is valid
     def __isPath(self, path: str) -> bool:
@@ -124,10 +132,10 @@ class SimpleStore:
             with self.__getLock().acquire(timeout=10):
                 with open(self.__path, 'w') as jsonFile:
                     json.dump(self.__loadedData, jsonFile, indent=2)
-                    
+
         except Timeout:
             logging.error(
-                "the lock is held by another instance of this application")
+                "the lock is held by another instance of this application") 
         except Exception as exception:
             logging.error(exception)
 
@@ -173,6 +181,7 @@ class SimpleStore:
             )
             self.__updateJson()
             self.__lastOperation = LastOperation.CREATE
+
         except Exception as exception:
             print(exception)
             return
@@ -194,6 +203,7 @@ class SimpleStore:
             else:
                 print("The value has been destroyed as Time to Live Expired")
                 return {}
+
         except Exception as exception:
             logging.error("Key not found in store")
             return {}
@@ -216,6 +226,7 @@ class SimpleStore:
                 self.__updateJson()
                 self.__lastOperation = LastOperation.DELETE
                 return
+
         except Exception as exception:
             logging.error("Deletion failed. Key not found in store")
             return
@@ -237,6 +248,7 @@ class SimpleStore:
             # datetime object
             timeStamp = datetime.strptime(
                 timeStampInString, self.__DATE_TIME_FORMAT)
+            # time difference
             deltaTimeInSeconds = int((currentTime - timeStamp).total_seconds())
             timeToLive = self.__loadedData[key][self.__TIME_TO_LIVE_IN_SECONDS]
 
@@ -249,6 +261,7 @@ class SimpleStore:
                 return True
             else:
                 return False
+
         except Exception as exception:
             logging.error(exception + " failed to delete")
             return
