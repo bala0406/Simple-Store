@@ -4,8 +4,10 @@ import os
 import sys
 import json
 import enum
+import logging
 from pathlib import Path
 from datetime import datetime
+import threading
 ########################################################################
 
 
@@ -62,7 +64,7 @@ class SimpleStore:
         elif(platform == "darwin"):
             self.__path = basePath + "/{0}.json".format(self.__fileName)
         else:
-            print("your platform is currently not supported")
+            logging.critical(msg="your platform is currently not supported")
 
     # check if the user provided path is valid
     def __isPath(self, path: str) -> bool:
@@ -85,12 +87,12 @@ class SimpleStore:
 
                 if(self.__isFilePresent == False and isFile == False):
                     self.__updateJson()
-                    print("File created at:" + self.__path)
+                    logging.info("File created at:" + self.__path)
                     self.__isFilePresent = True
                     return
                 self.__isFilePresent = True
             else:
-                print("!!!Invalid path for store!!!")
+                logging.error("Invalid path for store")
 
     # loads the json file as dictionary
     def __loadJson(self):
@@ -98,7 +100,7 @@ class SimpleStore:
             with open(self.__path, 'r') as file:
                 self.__loadedData = json.load(file)
         except Exception as exception:
-            print(exception)
+            logging.error(exception)
             return
 
     # writes back the updated data to the store
@@ -107,19 +109,19 @@ class SimpleStore:
             with open(self.__path, 'w') as jsonFile:
                 json.dump(self.__loadedData, jsonFile, indent=2)
         except Exception as exception:
-            print(exception)
+            logging.error(exception)
             return
 
     # create a new key-value pair and append it to the loaded dictionary
     def create(self, key: str, value: dict = {}, timeToLiveInSeconds: int = 0):
         # if the size of the value(json object or dict) is greater than 16KB, then it discards
         if((sys.getsizeof(value)/1024) > 16):
-            print("Json object value size should be less than 16KB")
+            logging.warning("Json object value size should be less than 16KB")
             return
 
         if(self.__isFilePresent == False and self.__isPath(self.__path) == False):
             self.__updateJson()
-            print("File created at:" + self.__path)
+            logging.info("File created at:" + self.__path)
             self.__isFilePresent = True
         try:
             # verifies that the file size of a single store won't exceed 1GB
@@ -127,17 +129,17 @@ class SimpleStore:
             size = "{:.2f}".format(
                 float(((os.path.getsize(self.__path) + sys.getsizeof(value)) / (1024 * 1024))))
             if float(size) >= 1024.00:
-                print("The file size exceeds 1GB")
+                logging.error("The file size exceeds 1GB")
                 return
             # verifies that the key length won't exceed 32 characters
             if len(key) > 32:
-                print("please enter a key which is less than 32 characters")
+                logging.warning("please enter a key which is less than 32 characters")
                 return
 
             self.__loadJson()
 
             if key in self.__loadedData.keys():
-                print("The entered key is already present, trying using another key")
+                logging.error("The entered key is already present, trying using another key")
                 return
 
             self.__loadedData[key] = value
@@ -165,10 +167,10 @@ class SimpleStore:
                 self.__lastOperation = LastOperation.READ
                 return value
             else:
-                print("The value has been destroyed as Time to Live Expired")
-                return
+                logging.info("The value has been destroyed as Time to Live Expired")
+                return {}
         except Exception as exception:
-            print("Key not found in store")
+            logging.error("Key not found in store")
             return {}
 
     # deletes the key value pair for the given key if present
@@ -184,7 +186,7 @@ class SimpleStore:
 
             # checks whether the Time to Live property has been expired or not
             if(self.__isValueDestroyed(key) == True):
-                print("The value has been already destroyed as Time to Live Expired")
+                logging.info("The value has been already destroyed as Time to Live Expired")
                 return
             else:
                 del self.__loadedData[key]
@@ -192,7 +194,7 @@ class SimpleStore:
                 self.__lastOperation = LastOperation.DELETE
                 return
         except Exception as exception:
-            print("Deletion failed. Key not found in store")
+            logging.error("Deletion failed. Key not found in store")
             return
 
     # returns string value
@@ -225,8 +227,8 @@ class SimpleStore:
             else:
                 return False
         except Exception as exception:
-            print(exception)
-            return False
+            logging.error(exception + " failed to delete")
+            return
 
     # destroys the current alive object and resets
     # use this before creating a new second or nth instance to avoid duplication
@@ -242,3 +244,4 @@ class SimpleStore:
             self.__loadedData = {}
             self.__isFilePresent = False
             self.__lastOperation = LastOperation.NONE
+            logging.info("object state destroyed")
