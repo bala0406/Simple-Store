@@ -22,6 +22,9 @@ class SimpleStore:
     # singleton instance
     __simpleStore = None
 
+    # Thread Lock
+    __lock = None
+
     # default path to the store
     __path = ""
     # default file name of the store if one is not provided using setPath()
@@ -49,6 +52,8 @@ class SimpleStore:
         return SimpleStore.__simpleStore
 
     def __init__(self):
+
+        self.__lock = threading.Lock()
         # gets the current platform at runtime
         platform = sys.platform
         # provides path for current directory
@@ -87,13 +92,13 @@ class SimpleStore:
 
                 if(self.__isFilePresent == False and isFile == False):
                     self.__updateJson()
-                    logging.info("File created at:" + self.__path)
+                    print("File created at: " + self.__path)
                     self.__isFilePresent = True
                     return
                 self.__isFilePresent = True
             else:
                 logging.error("Invalid path for store")
-
+ 
     # loads the json file as dictionary
     def __loadJson(self):
         try:
@@ -114,6 +119,7 @@ class SimpleStore:
 
     # create a new key-value pair and append it to the loaded dictionary
     def create(self, key: str, value: dict = {}, timeToLiveInSeconds: int = 0):
+
         # if the size of the value(json object or dict) is greater than 16KB, then it discards
         if((sys.getsizeof(value)/1024) > 16):
             logging.warning("Json object value size should be less than 16KB")
@@ -121,7 +127,7 @@ class SimpleStore:
 
         if(self.__isFilePresent == False and self.__isPath(self.__path) == False):
             self.__updateJson()
-            logging.info("File created at:" + self.__path)
+            print("File created at: " + self.__path)
             self.__isFilePresent = True
         try:
             # verifies that the file size of a single store won't exceed 1GB
@@ -133,14 +139,19 @@ class SimpleStore:
                 return
             # verifies that the key length won't exceed 32 characters
             if len(key) > 32:
-                logging.warning("please enter a key which is less than 32 characters")
+                logging.warning(
+                    "please enter a key which is less than 32 characters")
                 return
 
             self.__loadJson()
 
             if key in self.__loadedData.keys():
-                logging.error("The entered key is already present, trying using another key")
-                return
+                if(self.__isValueDestroyed(key) == False):
+                    logging.error(
+                        "The entered key is already present, trying using another key")
+                    return
+                else:
+                    pass    
 
             self.__loadedData[key] = value
             self.__loadedData[key][self.__TIME_TO_LIVE_IN_SECONDS] = timeToLiveInSeconds
@@ -167,7 +178,7 @@ class SimpleStore:
                 self.__lastOperation = LastOperation.READ
                 return value
             else:
-                logging.info("The value has been destroyed as Time to Live Expired")
+                print("The value has been destroyed as Time to Live Expired")
                 return {}
         except Exception as exception:
             logging.error("Key not found in store")
@@ -186,7 +197,8 @@ class SimpleStore:
 
             # checks whether the Time to Live property has been expired or not
             if(self.__isValueDestroyed(key) == True):
-                logging.info("The value has been already destroyed as Time to Live Expired")
+                logging.warning(
+                    "The value has been already destroyed as Time to Live Expired")
                 return
             else:
                 del self.__loadedData[key]
@@ -244,4 +256,4 @@ class SimpleStore:
             self.__loadedData = {}
             self.__isFilePresent = False
             self.__lastOperation = LastOperation.NONE
-            logging.info("object state destroyed")
+            logging.warning("object state destroyed")
