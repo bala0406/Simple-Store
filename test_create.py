@@ -5,7 +5,7 @@ db = SimpleStore.getInstance()
 db.setPath("/home/bala/FreshworksAssignment","dummy")
 
 
-db.create("animal",{"1":"elephant","2" : "bird"},10)
+db.create("animal",{"1":"elephant","2" : "bird"},0)
 
 # db.create("animal",{"1":"elephant","2" : "lion"})
 # print(db.read("animal"))

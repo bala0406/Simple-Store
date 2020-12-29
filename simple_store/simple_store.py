@@ -7,7 +7,8 @@ import enum
 import logging
 from pathlib import Path
 from datetime import datetime
-import threading
+from filelock import Timeout, FileLock
+import time
 ########################################################################
 
 
@@ -21,9 +22,6 @@ class LastOperation(enum.Enum):
 class SimpleStore:
     # singleton instance
     __simpleStore = None
-
-    # Thread Lock
-    __lock = None
 
     # default path to the store
     __path = ""
@@ -52,8 +50,6 @@ class SimpleStore:
         return SimpleStore.__simpleStore
 
     def __init__(self):
-
-        self.__lock = threading.Lock()
         # gets the current platform at runtime
         platform = sys.platform
         # provides path for current directory
@@ -98,24 +94,42 @@ class SimpleStore:
                 self.__isFilePresent = True
             else:
                 logging.error("Invalid path for store")
- 
+
+    # creates lock on the current file
+    def __getLock(self):
+        lockFilePath = self.__path + ".lock"
+        lock = FileLock(lockFilePath, timeout=1)
+        return lock
+
     # loads the json file as dictionary
     def __loadJson(self):
         try:
-            with open(self.__path, 'r') as file:
-                self.__loadedData = json.load(file)
+            # gets lock on the file for reading
+            # if file is heldby another process for more than 10 seconds, it throws timeout exception
+            with self.__getLock().acquire(timeout=10):
+                with open(self.__path, 'r') as file:
+                    self.__loadedData = json.load(file)
+                    # time.sleep(12)
+        except Timeout:
+            logging.error(
+                "the lock is held by another instance of this application")
         except Exception as exception:
             logging.error(exception)
-            return
 
     # writes back the updated data to the store
     def __updateJson(self):
         try:
-            with open(self.__path, 'w') as jsonFile:
-                json.dump(self.__loadedData, jsonFile, indent=2)
+            # gets lock on the file for writing
+            # waits for 10 seconds if the file is held by another operation
+            with self.__getLock().acquire(timeout=10):
+                with open(self.__path, 'w') as jsonFile:
+                    json.dump(self.__loadedData, jsonFile, indent=2)
+                    
+        except Timeout:
+            logging.error(
+                "the lock is held by another instance of this application")
         except Exception as exception:
             logging.error(exception)
-            return
 
     # create a new key-value pair and append it to the loaded dictionary
     def create(self, key: str, value: dict = {}, timeToLiveInSeconds: int = 0):
@@ -151,7 +165,7 @@ class SimpleStore:
                         "The entered key is already present, trying using another key")
                     return
                 else:
-                    pass    
+                    pass
 
             self.__loadedData[key] = value
             self.__loadedData[key][self.__TIME_TO_LIVE_IN_SECONDS] = timeToLiveInSeconds
@@ -191,9 +205,6 @@ class SimpleStore:
                 pass
             else:
                 self.__loadJson()
-
-            # if(self.__loadedData[key] == None):
-            #     return
 
             # checks whether the Time to Live property has been expired or not
             if(self.__isValueDestroyed(key) == True):
