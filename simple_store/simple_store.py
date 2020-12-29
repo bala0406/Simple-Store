@@ -28,7 +28,10 @@ class SimpleStore:
    
     # default file name of the store if one is not provided using setPath()
     __fileName = None
-   
+    
+    # data loaded from json file
+    __loadedData = None
+
     # records the last performed operation to avoid reloading the entire json
     __lastOperation = LastOperation.NONE
 
@@ -276,8 +279,8 @@ class SimpleStore:
         if(self.__simpleStore != None):
             self.__simpleStore = None
             self.__path = ""
-            self.__fileName = "SimpleStore"
-            self.__loadedData = {}
+            self.__fileName = None
+            self.__loadedData = None
             self.__isFilePresent = False
             self.__lastOperation = LastOperation.NONE
             logging.warning("object state destroyed")
