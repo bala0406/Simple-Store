@@ -167,8 +167,10 @@ class SimpleStore:
         except Timeout:
             logging.error(
                 "the lock is held by another instance of this application")
+            exit()    
         except Exception as exception:
             logging.error(exception)
+            exit()
 
     # create a new key-value pair and append it to the loaded dictionary
     def create(self, key: str, value: dict = {}, timeToLiveInSeconds: int = 0):
