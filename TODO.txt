@@ -1,4 +1,0 @@
-optimize read and write
-make thread safe
-
-

@@ -86,21 +86,28 @@ class SimpleStore:
 
     # sets the path respective to the operating system
     def __setOsSpecificPath(self, path: str, fileName: str):
-        if(self.__platform == "linux" or self.__platform == "linux2"):
-            if(self.__isFileHidden == True):
-                self.__path = path.strip() + "/.{0}.json".format(fileName)
+        linux = ["linux", "linux2"]
+        windows = ["win32", "cygwin", "msys"]
+        mac = ["darwin"]
+        try:
+            if(self.__platform in linux):
+                if(self.__isFileHidden == True):
+                    self.__path = path.strip() + "/.{0}.json".format(fileName)
+                else:
+                    self.__path = path + "/{0}.json".format(fileName)
+            elif(self.__platform in windows):
+                self.__path = path + "\\{0}.json".format(fileName)
+            elif(self.__platform in mac):
+                if(self.__isFileHidden == True):
+                    self.__path = path.strip() + "/.{0}.json".format(fileName)
+                else:
+                    self.__path = path + "/{0}.json".format(fileName)
             else:
-                self.__path = path + "/{0}.json".format(fileName)
-        elif(self.__platform == "win32" or self.__platform == "cygwin" or self.__platform == "msys"):
-            self.__path = path + "\\{0}.json".format(fileName)
-        elif(self.__platform == "darwin"):
-            if(self.__isFileHidden == True):
-                self.__path = path.strip() + "/.{0}.json".format(fileName)
-            else:
-                self.__path = path + "/{0}.json".format(fileName)
-        else:
-            logging.critical(
-                msg="your platform is currently not supported, functions may not perform as intended")
+                logging.critical(
+                    msg="your platform is currently not supported, functions may not perform as intended")
+                exit()
+        except Exception as exception:
+            logging.error(exception)
             exit()
 
     # enables user to set custom path to the data store
@@ -167,13 +174,13 @@ class SimpleStore:
         except Timeout:
             logging.error(
                 "the lock is held by another instance of this application")
-            exit()    
+            exit()
         except Exception as exception:
             logging.error(exception)
             exit()
 
     # create a new key-value pair and append it to the loaded dictionary
-    def create(self, key: str, value: dict = {}, timeToLiveInSeconds: int = 0):
+    def create(self, key: str, value: dict, timeToLiveInSeconds: int = 0):
 
         # if the size of the value(json object or dict) is greater than 16KB, then it discards
         if((sys.getsizeof(value)/self.__BYTE_CONVERSION_VALUE_INT) > self.__VALUE_CAP_SIZE_IN_KB):
@@ -311,6 +318,7 @@ class SimpleStore:
         if(self.__simpleStore != None):
             self.__simpleStore = None
             self.__path = ""
+            self.__platform = None
             self.__fileName = None
             self.__loadedData = None
             self.__isFilePresent = False
