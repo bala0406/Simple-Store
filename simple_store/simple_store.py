@@ -20,18 +20,24 @@ class LastOperation(enum.Enum):
 
 
 class SimpleStore:
+
     # singleton instance
     __simpleStore = None
-   
+
     # default path to the store
     __path = ""
-   
+
+    # file hidden flag
+    __isFileHidden = False
+
     # default file name of the store if one is not provided using setPath()
     __fileName = None
-    
+
     # data loaded from json file
     __loadedData = None
 
+    # current operating system platform
+    __platform = None
     # records the last performed operation to avoid reloading the entire json
     __lastOperation = LastOperation.NONE
 
@@ -42,6 +48,15 @@ class SimpleStore:
     __TIME_TO_LIVE_IN_SECONDS = "time-to-live-in-seconds"
     __TIME_STAMP = "time-stamp"
     __DATE_TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+    # constants
+    __ONE_GB_INT = 1024
+    __ONE_GB_FLOAT = 1024.00
+    __BYTE_CONVERSION_VALUE_INT = 1024
+    __BYTE_CONVERSION_VALUE_FLOAT = 1024.00
+    __FILE_CAP_SIZE_IN_GB = 1024
+    __VALUE_CAP_SIZE_IN_KB = 16
+    __KEY_LENGTH_CAP = 32
 
     # returns the instance if present or creates a new instance
     @staticmethod
@@ -54,29 +69,13 @@ class SimpleStore:
     # constructors are to used to invoke multiple instances
     # but object state won't be saved across constructors and it becomes a mess with many constructors.
     def __init__(self):
-
+        # gets the current platform
+        self.__platform = sys.platform
         self.__fileName = "SimpleStore"
+        self.__path = str(os.getcwd())
         self.__loadedData = {}
         self.__lastOperation = LastOperation.NONE
         self.__isFilePresent = False
-        # gets the current platform at runtime
-        platform = sys.platform
-        # provides path for current directory
-        basePath = str(os.getcwd())
-        # provides path of home directory
-        home = str(Path.home())
-
-        # returns the path respective to the operating system
-        if(platform == "linux" or platform == "linux2"):
-            self.__path = basePath + "/{0}.json".format(self.__fileName)
-        elif(platform == "win32" or platform == "cygwin" or platform == "msys"):
-            self.__path = basePath + "\{0}.json".format(self.__fileName)
-        elif(platform == "darwin"):
-            self.__path = basePath + "/{0}.json".format(self.__fileName)
-        else:
-            self.__path = basePath + "/{0}.json".format(self.__fileName)
-            logging.critical(
-                msg="your platform is currently not supported, functions may not perform as intended")
 
     # check if the user provided path is valid
     def __isPath(self, path: str) -> bool:
@@ -85,26 +84,53 @@ class SimpleStore:
         else:
             return False
 
+    # sets the path respective to the operating system
+    def __setOsSpecificPath(self, path: str, fileName: str):
+        if(self.__platform == "linux" or self.__platform == "linux2"):
+            if(self.__isFileHidden == True):
+                self.__path = path.strip() + "/.{0}.json".format(fileName)
+            else:
+                self.__path = path + "/{0}.json".format(fileName)
+        elif(self.__platform == "win32" or self.__platform == "cygwin" or self.__platform == "msys"):
+            self.__path = path + "\\{0}.json".format(fileName)
+        elif(self.__platform == "darwin"):
+            if(self.__isFileHidden == True):
+                self.__path = path.strip() + "/.{0}.json".format(fileName)
+            else:
+                self.__path = path + "/{0}.json".format(fileName)
+        else:
+            logging.critical(
+                msg="your platform is currently not supported, functions may not perform as intended")
+            exit()
+
     # enables user to set custom path to the data store
     # optionally the user can hide the created file using the hidden parameter
-    def setPath(self, path: str = __path, fileName: str = __fileName, hidden: bool = False) -> None:
-        if(path != None):
-            if(self.__isPath(path)):
-                if(hidden == True):
-                    self.__path = path.strip() + "/.{0}.json".format(fileName)
-                else:
-                    self.__path = path.strip() + "/{0}.json".format(fileName)
-                # finds if the file is already present
-                isFile = os.path.isfile(self.__path)
+    def setPath(self, path: str = None, fileName: str = None, isHidden: bool = False) -> None:
+        if(path == None or path.strip() == ""):
+            path = self.__path
 
-                if(self.__isFilePresent == False and isFile == False):
-                    self.__updateJson()
-                    print("File created at: " + self.__path)
-                    self.__isFilePresent = True
-                    return
+        if(fileName == None or path.strip == ""):
+            fileName = self.__fileName
+        self.__isFileHidden = isHidden
+
+        # !!! currently file hiding is only supported on unix machines and not on windows
+        if(self.__platform == "win32" or self.__platform == "cygwin" or self.__platform == "msys"):
+            self.__isFileHidden = False
+
+        if(self.__isPath(path)):
+            self.__setOsSpecificPath(path, fileName)
+            # finds if the file is already present
+            isFile = os.path.isfile(self.__path)
+
+            if(self.__isFilePresent == False and isFile == False):
+                self.__updateJson()
+                print("File created at: " + self.__path)
                 self.__isFilePresent = True
-            else:
-                logging.error("Invalid path for store")
+                return
+            self.__isFilePresent = True
+        else:
+            logging.error("Invalid path for store")
+            exit()
 
     # creates lock on the current file
     def __getLock(self):
@@ -124,8 +150,10 @@ class SimpleStore:
         except Timeout:
             logging.error(
                 "the lock is held by another instance of this application")
+            exit()
         except Exception as exception:
             logging.error(exception)
+            exit()
 
     # writes back the updated data to the store
     def __updateJson(self):
@@ -138,7 +166,7 @@ class SimpleStore:
 
         except Timeout:
             logging.error(
-                "the lock is held by another instance of this application") 
+                "the lock is held by another instance of this application")
         except Exception as exception:
             logging.error(exception)
 
@@ -146,11 +174,12 @@ class SimpleStore:
     def create(self, key: str, value: dict = {}, timeToLiveInSeconds: int = 0):
 
         # if the size of the value(json object or dict) is greater than 16KB, then it discards
-        if((sys.getsizeof(value)/1024) > 16):
+        if((sys.getsizeof(value)/self.__BYTE_CONVERSION_VALUE_INT) > self.__VALUE_CAP_SIZE_IN_KB):
             logging.warning("Json object value size should be less than 16KB")
             return
 
-        if(self.__isFilePresent == False and self.__isPath(self.__path) == False):
+        if(self.__isFilePresent == False and os.path.isfile(self.__path) == False):
+            self.__setOsSpecificPath(self.__path, self.__fileName)
             self.__updateJson()
             print("File created at: " + self.__path)
             self.__isFilePresent = True
@@ -158,12 +187,13 @@ class SimpleStore:
             # verifies that the file size of a single store won't exceed 1GB
             # combined size is file size added to the the size of current value of dict
             size = "{:.2f}".format(
-                float(((os.path.getsize(self.__path) + sys.getsizeof(value)) / (1024 * 1024))))
-            if float(size) >= 1024.00:
+                float(((os.path.getsize(self.__path) +
+                        sys.getsizeof(value)) / (self.__BYTE_CONVERSION_VALUE_INT) ** 2)))
+            if float(size) >= self.__ONE_GB_FLOAT:
                 logging.error("The file size exceeds 1GB")
                 return
             # verifies that the key length won't exceed 32 characters
-            if len(key) > 32:
+            if len(key) > self.__KEY_LENGTH_CAP:
                 logging.warning(
                     "please enter a key which is less than 32 characters")
                 return
@@ -282,5 +312,6 @@ class SimpleStore:
             self.__fileName = None
             self.__loadedData = None
             self.__isFilePresent = False
+            self.__isFileHidden = False
             self.__lastOperation = LastOperation.NONE
             logging.warning("object state destroyed")
