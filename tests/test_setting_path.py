@@ -23,7 +23,7 @@ db.setPath(fileName="my_store")
 ########################################################
 # case - 3 ----------- set path with file name and path
 ########################################################
-home = Path.home()
+home = str(Path.home())
 db.setPath(path=home,fileName="my_store")
 
 #####################################################################################

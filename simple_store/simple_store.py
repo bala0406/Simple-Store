@@ -116,7 +116,7 @@ class SimpleStore:
         if(path == None or path.strip() == ""):
             path = self.__path
 
-        if(fileName == None or path.strip == ""):
+        if(fileName == None or fileName.strip() == ""):
             fileName = self.__fileName
         self.__isFileHidden = isHidden
 
