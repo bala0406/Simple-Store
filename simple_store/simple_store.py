@@ -85,7 +85,7 @@ class SimpleStore:
             return False
 
     # sets the path respective to the operating system
-    def __setOsSpecificPath(self, path: str, fileName: str):
+    def __setOsSpecificPath(self, path: str, fileName: str) -> None:
         linux = ["linux", "linux2"]
         windows = ["win32", "cygwin", "msys"]
         mac = ["darwin"]
@@ -146,7 +146,7 @@ class SimpleStore:
         return lock
 
     # loads the json file as dictionary
-    def __loadJson(self):
+    def __loadJson(self) -> None:
         try:
             # gets lock on the file for reading
             # if file is heldby another process for more than 10 seconds, it throws timeout exception
@@ -159,11 +159,11 @@ class SimpleStore:
                 "the lock is held by another instance of this application")
             exit()
         except Exception as exception:
-            logging.error(exception)
+            logging.error("file not found")
             exit()
 
     # writes back the updated data to the store
-    def __updateJson(self):
+    def __updateJson(self) -> None:
         try:
             # gets lock on the file for writing
             # waits for 10 seconds if the file is held by another operation
@@ -180,17 +180,18 @@ class SimpleStore:
             exit()
 
     # create a new key-value pair and append it to the loaded dictionary
-    def create(self, key: str, value: dict, timeToLiveInSeconds: int = 0):
+    def create(self, key: str, value: dict, timeToLiveInSeconds: int = 0) -> None:
 
         # if the size of the value(json object or dict) is greater than 16KB, then it discards
         if((sys.getsizeof(value)/self.__BYTE_CONVERSION_VALUE_INT) > self.__VALUE_CAP_SIZE_IN_KB):
             logging.warning("Json object value size should be less than 16KB")
             return
 
-        if(self.__isFilePresent == False and os.path.isfile(self.__path) == False):
+        if(self.__isFilePresent == False):
             self.__setOsSpecificPath(self.__path, self.__fileName)
-            self.__updateJson()
-            print("File created at: " + self.__path)
+            if(os.path.isfile(self.__path) == False):
+                self.__updateJson()
+                print("File created at: " + self.__path)
             self.__isFilePresent = True
         try:
             # verifies that the file size of a single store won't exceed 1GB
@@ -251,7 +252,7 @@ class SimpleStore:
             return {}
 
     # deletes the key value pair for the given key if present
-    def delete(self, key: str):
+    def delete(self, key: str) -> None:
         try:
             if(self.__lastOperation == LastOperation.READ):
                 pass
@@ -278,11 +279,11 @@ class SimpleStore:
         return datetime.now().strftime(self.__DATE_TIME_FORMAT)
 
     # returns datetime object
-    def __getCurrentTime(self):
+    def __getCurrentTime(self) -> datetime:
         return datetime.now().replace(microsecond=0)
 
     # checks "Time to Live" property and returns whether the object has been destroyed or not
-    def __isValueDestroyed(self, key: str):
+    def __isValueDestroyed(self, key: str) -> bool:
         try:
             currentTime = self.__getCurrentTime()
             # string object
@@ -306,11 +307,11 @@ class SimpleStore:
 
         except Exception as exception:
             logging.error(exception + " failed to delete")
-            return
+            return False
 
     # destroys the current alive object and resets
     # use this before creating a new second or nth instance to avoid duplication
-    def close(self):
+    def close(self) -> None:
         # !!! be careful, the current state of the object will be lost and
         # !!! when requested again using getInstance(),
         # !!! a new instance will be created
