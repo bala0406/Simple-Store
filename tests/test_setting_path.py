@@ -9,7 +9,7 @@ from simple_store.simple_store import SimpleStore
 
 db = SimpleStore.getInstance()
 
-# !!! NOTE - set path won't create the file
+# !!! NOTE - set path creates a file if one is not present at the given directory
 #######################################################################################
 # case - 1 ----------- omitting set path or empty set path - both produce same results
 #######################################################################################
@@ -31,7 +31,7 @@ db.setPath(path=home,fileName="my_store")
 #####################################################################################
 # !!! Currently hidden file only works on unix machines, 
 # !!! the parameter isHidden will be ignored on windows if one is provided.
-db.setPath(path=home,fileName="my_store",isHidden=True)
+db.setPath(path="",fileName="my_store",isHidden=True)
 
 
 db.close()
