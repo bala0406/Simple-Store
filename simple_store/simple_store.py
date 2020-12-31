@@ -26,7 +26,7 @@ class SimpleStore:
 
     # default path to the store
     __path = ""
-
+    __fullPath = ""
     # file hidden flag
     __isFileHidden = False
 
@@ -76,6 +76,7 @@ class SimpleStore:
         self.__loadedData = {}
         self.__lastOperation = LastOperation.NONE
         self.__isFilePresent = False
+        self.__setOsSpecificPath(self.__path,self.__fileName)
 
     # check if the user provided path is valid
     def __isPath(self, path: str) -> bool:
@@ -92,16 +93,16 @@ class SimpleStore:
         try:
             if(self.__platform in linux):
                 if(self.__isFileHidden == True):
-                    self.__path = path.strip() + "/.{0}.json".format(fileName)
+                    self.__fullPath = path.strip() + "/.{0}.json".format(fileName)
                 else:
-                    self.__path = path + "/{0}.json".format(fileName)
+                    self.__fullPath = path + "/{0}.json".format(fileName)
             elif(self.__platform in windows):
-                self.__path = path + "\\{0}.json".format(fileName)
+                self.__fullPath = path + "\\{0}.json".format(fileName)
             elif(self.__platform in mac):
                 if(self.__isFileHidden == True):
-                    self.__path = path.strip() + "/.{0}.json".format(fileName)
+                    self.__fullPath = path.strip() + "/.{0}.json".format(fileName)
                 else:
-                    self.__path = path + "/{0}.json".format(fileName)
+                    self.__fullPath = path + "/{0}.json".format(fileName)
             else:
                 logging.critical(
                     msg="your platform is currently not supported, functions may not perform as intended")
@@ -127,11 +128,11 @@ class SimpleStore:
         if(self.__isPath(path)):
             self.__setOsSpecificPath(path, fileName)
             # finds if the file is already present
-            isFile = os.path.isfile(self.__path)
+            isFile = os.path.isfile(self.__fullPath)
 
             if(self.__isFilePresent == False and isFile == False):
                 self.__updateJson()
-                print("File created at: " + self.__path)
+                print("File created at: " + self.__fullPath)
                 self.__isFilePresent = True
                 return
             self.__isFilePresent = True
@@ -151,7 +152,7 @@ class SimpleStore:
             # gets lock on the file for reading
             # if file is heldby another process for more than 10 seconds, it throws timeout exception
             with self.__getLock().acquire(timeout=10):
-                with open(self.__path, 'r') as file:
+                with open(self.__fullPath, 'r') as file:
                     self.__loadedData = json.load(file)
                     # time.sleep(12)
         except Timeout:
@@ -168,7 +169,7 @@ class SimpleStore:
             # gets lock on the file for writing
             # waits for 10 seconds if the file is held by another operation
             with self.__getLock().acquire(timeout=10):
-                with open(self.__path, 'w') as jsonFile:
+                with open(self.__fullPath, 'w') as jsonFile:
                     json.dump(self.__loadedData, jsonFile, indent=2)
 
         except Timeout:
@@ -188,16 +189,16 @@ class SimpleStore:
             return
 
         if(self.__isFilePresent == False):
-            self.__setOsSpecificPath(self.__path, self.__fileName)
-            if(os.path.isfile(self.__path) == False):
+            if(os.path.isfile(self.__fullPath) == False):
+                self.__setOsSpecificPath(self.__path, self.__fileName)
                 self.__updateJson()
-                print("File created at: " + self.__path)
+                print("File created at: " + self.__fullPath)  
             self.__isFilePresent = True
         try:
             # verifies that the file size of a single store won't exceed 1GB
             # combined size is file size added to the the size of current value of dict
             size = "{:.2f}".format(
-                float(((os.path.getsize(self.__path) +
+                float(((os.path.getsize(self.__fullPath) +
                         sys.getsizeof(value)) / (self.__BYTE_CONVERSION_VALUE_INT) ** 2)))
             if float(size) >= self.__ONE_GB_FLOAT:
                 logging.error("The file size exceeds 1GB")
@@ -240,7 +241,9 @@ class SimpleStore:
 
             # checks whether the Time to Live property has beem expired or not
             if(self.__isValueDestroyed(key) == False):
-                value = self.__loadedData[key]
+                value = dict(self.__loadedData[key])
+                value.pop(self.__TIME_STAMP)
+                value.pop(self.__TIME_TO_LIVE_IN_SECONDS)
                 self.__lastOperation = LastOperation.READ
                 return value
             else:
@@ -321,6 +324,7 @@ class SimpleStore:
             self.__path = ""
             self.__platform = None
             self.__fileName = None
+            self.__fullPath = None
             self.__loadedData = None
             self.__isFilePresent = False
             self.__isFileHidden = False
