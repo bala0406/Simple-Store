@@ -87,7 +87,7 @@ To get a local copy up and running follow these simple steps.
 
 3. You can optionally set custom directory, file name and hidden property to the data store file. It's completely fine to skip this step and the data store file will be created in your `current project directory` with a default file name `SimpleStore` with file hiding defaulted to `False`.
    ```sh
-   # isHidden property is deafaulted to false
+   # isHidden property is defaulted to false
    db.setPath(path="your path goes here", fileName="enter your fileName here")
 
    # create file with default path 
@@ -107,7 +107,7 @@ To get a local copy up and running follow these simple steps.
     dummyDict = {} # your dict
     db.create(key="enter your key here", value=dummyDict)
 
-    # the deafult time to live value is 0 which means None.
+    # the default time to live value is 0 which means None.
     # create data with time to live property
     db.create(key="enter your key here", value=dummyDict,timeToLiveInSeconds=10)
    ```
