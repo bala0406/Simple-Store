@@ -41,7 +41,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-A File based key-value data store that can be used in your project to store data in key value pairs in `json file` in your local machine. The `Simple Store` is very light weight and can be used in a small or medium level projects. The `Time to live` property is a great feature if you don't want the data to be stored permanently. It destroys the data automatically after the time has expired. The read and write operations are also `thread-safe`, so you don't need to worry about concurrent access to the store. If you're on an UNIX machine you can also able to `hide` your data store file. The size of the value that can be stored for a single key is capped at `16KB` for faster read and write. The file size is also capped at `1GB` to keep the process light. So plan accordingly.
+A File based key-value data store that can be used in your project to store data in key value pairs in `json file` in your local machine. The `Simple Store` is very light weight and can be used in a small or medium scale projects. The `Time to live` property is a great feature if you don't want the data to be stored permanently. It destroys the data automatically after the time has expired. The read and write operations are also `thread-safe`, so you don't need to worry about concurrent access to the store. If you're on an UNIX machine you can also able to `hide` your data store file. The size of the value that can be stored for a single key is capped at `16KB` for faster read and write. The file size is also capped at `1GB` to keep the process light. So plan accordingly.
 
 ### Built With
 * [Python :rocket:](https://www.python.org/)
